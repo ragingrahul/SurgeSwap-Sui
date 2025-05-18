@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f5dc; /* Light beige */
+  --foreground: #344B47; /* Updated text color to deep green */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #f5f5dc; /* Keep light beige even in dark mode */
+    --foreground: #344B47; /* Updated text color to deep green */
+  }
+}
+
+/* Custom scroll bar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Animation for notifications */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Base wallet adapter button styling (only for header button) */
+.wallet-adapter-button {
+  font-family: var(--font-geist-sans) !important;
+  font-weight: 500 !important;
+  border-radius: 9999px !important;
+  color: white !important;
+  background-color: #019E8C !important;
+  transition: all 0.2s ease !important;
+}
+
+.wallet-adapter-button:hover {
+  background-color: #0b877a !important;
+}
+
+.wallet-adapter-button-trigger {
+  background-color: #019E8C !important;
+}

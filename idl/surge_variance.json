@@ -1,0 +1,493 @@
+{
+  "address": "4aL6kUNn43DEwEdUvcjrDrofZwJNPYcfPZqoTZfg2BSk",
+  "metadata": {
+    "name": "surge_variance",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize_market",
+      "discriminator": [
+        35,
+        35,
+        189,
+        193,
+        155,
+        48,
+        170,
+        203
+      ],
+      "accounts": [
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "usdc_vault",
+          "writable": true
+        },
+        {
+          "name": "var_long_mint",
+          "writable": true
+        },
+        {
+          "name": "var_short_mint",
+          "writable": true
+        },
+        {
+          "name": "volatility_stats",
+          "docs": [
+            "The volatility stats account from the oracle program"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch",
+          "type": "u64"
+        },
+        {
+          "name": "strike",
+          "type": "f64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "bumps",
+          "type": {
+            "defined": {
+              "name": "MarketBumps"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mint_tokens",
+      "discriminator": [
+        59,
+        132,
+        24,
+        246,
+        122,
+        39,
+        8,
+        243
+      ],
+      "accounts": [
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "user_authority",
+          "signer": true
+        },
+        {
+          "name": "user_usdc",
+          "writable": true
+        },
+        {
+          "name": "usdc_vault",
+          "writable": true
+        },
+        {
+          "name": "var_long_mint",
+          "writable": true
+        },
+        {
+          "name": "var_short_mint",
+          "writable": true
+        },
+        {
+          "name": "user_var_long",
+          "writable": true
+        },
+        {
+          "name": "user_var_short",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "is_long",
+          "type": "bool"
+        },
+        {
+          "name": "epoch",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "bumps",
+          "type": {
+            "defined": {
+              "name": "MarketBumps"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "discriminator": [
+        184,
+        12,
+        86,
+        149,
+        70,
+        196,
+        97,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "user_authority",
+          "signer": true
+        },
+        {
+          "name": "user_usdc",
+          "writable": true
+        },
+        {
+          "name": "usdc_vault",
+          "writable": true
+        },
+        {
+          "name": "var_long_mint",
+          "writable": true
+        },
+        {
+          "name": "var_short_mint",
+          "writable": true
+        },
+        {
+          "name": "user_var_long",
+          "writable": true
+        },
+        {
+          "name": "user_var_short",
+          "writable": true
+        },
+        {
+          "name": "volatility_stats",
+          "docs": [
+            "The volatility stats account from the oracle program"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "bumps",
+          "type": {
+            "defined": {
+              "name": "MarketBumps"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Market",
+      "discriminator": [
+        219,
+        190,
+        213,
+        55,
+        0,
+        227,
+        198,
+        154
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "MarketInitialized",
+      "discriminator": [
+        134,
+        160,
+        122,
+        87,
+        50,
+        3,
+        255,
+        81
+      ]
+    },
+    {
+      "name": "MarketRedeemed",
+      "discriminator": [
+        234,
+        87,
+        146,
+        137,
+        120,
+        19,
+        232,
+        204
+      ]
+    },
+    {
+      "name": "TokensMinted",
+      "discriminator": [
+        207,
+        212,
+        128,
+        194,
+        175,
+        54,
+        64,
+        24
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "MarketExpired",
+      "msg": "Market is already expired"
+    },
+    {
+      "code": 6001,
+      "name": "NumberOverflow",
+      "msg": "Numeric overflow occurred"
+    }
+  ],
+  "types": [
+    {
+      "name": "Market",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "strike",
+            "type": "f64"
+          },
+          {
+            "name": "realized_variance",
+            "type": "f64"
+          },
+          {
+            "name": "var_long_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "var_short_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "volatility_stats",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "start_volatility",
+            "type": "f64"
+          },
+          {
+            "name": "bumps",
+            "type": {
+              "defined": {
+                "name": "MarketBumps"
+              }
+            }
+          },
+          {
+            "name": "is_initialized",
+            "type": "bool"
+          },
+          {
+            "name": "is_expired",
+            "type": "bool"
+          },
+          {
+            "name": "total_deposits",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketBumps",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "var_long_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "var_short_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "strike",
+            "type": "f64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "start_volatility",
+            "type": "f64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketRedeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "realized_variance",
+            "type": "f64"
+          },
+          {
+            "name": "strike",
+            "type": "f64"
+          },
+          {
+            "name": "long_payout",
+            "type": "u64"
+          },
+          {
+            "name": "short_payout",
+            "type": "u64"
+          },
+          {
+            "name": "total_deposits",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokensMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "is_long",
+            "type": "bool"
+          },
+          {
+            "name": "total_deposits",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}
