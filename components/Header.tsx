@@ -6,17 +6,35 @@ import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useWallet } from "@solana/wallet-adapter-react";
-import CustomWalletButton from "./CustomWalletButton";
+import { useCurrentAccount } from "@mysten/dapp-kit";
+import SuiWalletButton from "./SuiWalletButton";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { connected } = useWallet();
+  const currentAccount = useCurrentAccount();
   const [mounted, setMounted] = useState(false);
 
   // Only render wallet button after component has mounted
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    console.log("Header component mounted");
+
+    // Add an event listener to catch unhandled promise rejections
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection:", event.reason);
+    };
+
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection
+      );
+    };
   }, []);
 
   const navItems = [
@@ -84,7 +102,7 @@ const Header = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <CustomWalletButton />
+              <SuiWalletButton />
             </motion.div>
           )}
 
@@ -123,9 +141,9 @@ const Header = () => {
               </Link>
             ))}
             <div className="pt-2 border-t border-gray-100">
-              {mounted && !connected && (
+              {mounted && !currentAccount && (
                 <div className="wallet-adapter-button-container">
-                  <CustomWalletButton className="w-full" />
+                  <SuiWalletButton className="w-full" />
                 </div>
               )}
             </div>
