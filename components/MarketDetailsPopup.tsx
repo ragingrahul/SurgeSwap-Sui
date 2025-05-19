@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContentWithoutCloseButton,
@@ -41,6 +41,190 @@ const NETWORK = "testnet";
 // USDC token type on Sui
 const USDC_TOKEN_TYPE =
   "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC";
+
+// Package ID for the variance swap protocol
+const PACKAGE_ID =
+  "0xaf4b4cc5cbcd40d5e8c6ae8c2695dd58d23dedfd4949e1903765559be853119c";
+
+// Helper function to format time duration
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+
+// Type for position objects
+type Position = {
+  id: string;
+  marketId: string;
+  positionType: string;
+  longAmount: number;
+  shortAmount: number;
+  coinType: string;
+  strike: number;
+  startVolatility: number;
+  isRedeemable: boolean;
+  expiryTime: number;
+  timeRemaining: number;
+  mintDate: string;
+  value: string;
+  profit: string;
+  isProfit: boolean;
+  type: string;
+};
+
+// React hook for user positions
+function useUserPositions(
+  walletAddress: string | undefined,
+  suiClient: ReturnType<typeof useSuiClient>
+) {
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUserPositions = useCallback(async () => {
+    if (!walletAddress || !suiClient) {
+      setPositions([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Query for all TokenPair objects owned by the user
+      const { data: objects } = await suiClient.getOwnedObjects({
+        owner: walletAddress,
+        filter: {
+          StructType: `${PACKAGE_ID}::variance_swap::TokenPair`,
+        },
+        options: {
+          showContent: true,
+          showType: true,
+        },
+      });
+
+      // Process each position to extract relevant data
+      const userPositions = await Promise.all(
+        objects.map(async (obj) => {
+          // Safely access data with type assertions
+          const data = obj.data;
+          if (!data || !data.content) {
+            throw new Error("Invalid object data structure");
+          }
+
+          // Cast with more specific type for the fields
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const content = data.content as { fields: Record<string, any> };
+          const fields = content.fields;
+          const marketId = fields.market_id;
+
+          // Get long and short token amounts
+          // Token amounts might be direct fields or nested under fields.value
+          const longTokens =
+            typeof fields.long_tokens === "string"
+              ? fields.long_tokens
+              : fields.long_tokens?.fields?.value || "0";
+
+          const shortTokens =
+            typeof fields.short_tokens === "string"
+              ? fields.short_tokens
+              : fields.short_tokens?.fields?.value || "0";
+
+          // Determine position type (long, short, or both)
+          const positionType =
+            Number(longTokens) > 0 && Number(shortTokens) > 0
+              ? "both"
+              : Number(longTokens) > 0
+              ? "long"
+              : "short";
+
+          // Get market details to show additional info
+          const market = await suiClient.getObject({
+            id: marketId,
+            options: { showContent: true },
+          });
+
+          // Safely access market fields
+          const marketData = market.data;
+          const marketContent = marketData?.content as  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            | { fields: Record<string, any> }
+            | undefined;
+          const marketFields = marketContent?.fields || {};
+
+          // Extract type from obj
+          const coinType = data.type?.match(/<(.+)>/)?.[1] || "";
+
+          // Calculate if position is mature/redeemable
+          const currentTime = Math.floor(Date.now() / 1000);
+          const expiryTime =
+            Number(marketFields.timestamp || 0) +
+            Number(marketFields.epoch || 0);
+          const isExpired = currentTime > expiryTime;
+
+          // Format the mint date (using creation timestamp if available)
+          let mintDate = "Unknown";
+          if (
+            data.digest &&
+            typeof data.digest === "object" &&
+            "timestamp" in data.digest
+          ) {
+            const timestamp = (data.digest as { timestamp: number }).timestamp;
+            mintDate = new Date(timestamp).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+          }
+
+          // Estimate value based on tokens and assuming 1:1 for demo
+          const tokenValue =
+            (Number(longTokens) + Number(shortTokens)) / 1_000_000;
+
+          return {
+            id: data.objectId,
+            marketId,
+            positionType,
+            longAmount: Number(longTokens) / 1_000_000, // Convert from micro units
+            shortAmount: Number(shortTokens) / 1_000_000, // Convert from micro units
+            coinType,
+            strike: Number(marketFields.strike) / 100, // Convert from basis points if needed
+            startVolatility: Number(marketFields.start_volatility) / 100,
+            isRedeemable: isExpired,
+            expiryTime,
+            timeRemaining: Math.max(0, expiryTime - currentTime),
+            mintDate,
+            value: `$${tokenValue.toFixed(2)} USD`,
+            // Simplified profit calculation - in real app would be more complex
+            profit: isExpired
+              ? `+$${(tokenValue * 0.1).toFixed(2)}`
+              : "Pending",
+            isProfit: true, // For demo purposes
+            type: positionType.toUpperCase(),
+          };
+        })
+      );
+
+      setPositions(userPositions);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching positions:", err);
+      setError("Failed to load positions");
+    } finally {
+      setLoading(false);
+    }
+  }, [walletAddress, suiClient]);
+
+  useEffect(() => {
+    fetchUserPositions();
+
+    // Refresh positions periodically
+    const intervalId = setInterval(fetchUserPositions, 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchUserPositions]);
+
+  return { positions, loading, error, refreshPositions: fetchUserPositions };
+}
 
 export interface MarketDetailsProps {
   id: string;
@@ -88,18 +272,6 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
   const [usdcBalance, setUsdcBalance] = useState<string>("0");
   const [isLoadingBalance, setIsLoadingBalance] = useState<boolean>(false);
   const [isMinting, setIsMinting] = useState<boolean>(false);
-  const [userPositions, setUserPositions] = useState<
-    Array<{
-      type: string;
-      amount: string;
-      value: string;
-      profit: string;
-      isProfit: boolean;
-      mintDate: string;
-      address: string;
-    }>
-  >([]);
-  const [isLoadingPositions, setIsLoadingPositions] = useState<boolean>(false);
   const [dynamicExpired, setDynamicExpired] = useState<boolean>(isExpired);
   const [showDetails, setShowDetails] = useState<boolean>(false);
 
@@ -124,6 +296,23 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
 
   // Add the useTransactionExecution hook
   const executeTransaction = useTransactionExecution();
+
+  // Use the useUserPositions hook to fetch real user positions
+  const {
+    positions: userPositions,
+    loading: isLoadingPositions,
+    error: positionsError,
+    refreshPositions: fetchUserPositions,
+  } = useUserPositions(walletAddress, suiClient);
+
+  // Display error if position fetching failed
+  useEffect(() => {
+    if (positionsError) {
+      toast.error("Failed to load positions", {
+        description: positionsError,
+      });
+    }
+  }, [positionsError]);
 
   // Function to fetch USDC balance
   const fetchUsdcBalance = async () => {
@@ -168,33 +357,6 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
       return () => clearInterval(intervalId);
     }
   }, [connected, walletAddress]);
-
-  // Add function to fetch user positions
-  const fetchUserPositions = async () => {
-    if (!walletAddress || !connected) {
-      setUserPositions([]);
-      return;
-    }
-
-    try {
-      setIsLoadingPositions(true);
-
-      // This would need to be implemented based on your contract's specifics
-      // For now, we'll just set empty positions
-      setUserPositions([]);
-    } catch (error) {
-      console.error("Error fetching user positions:", error);
-    } finally {
-      setIsLoadingPositions(false);
-    }
-  };
-
-  // Call fetchUserPositions when wallet connects or tab changes to positions
-  useEffect(() => {
-    if (activeTab === "positions" && connected) {
-      fetchUserPositions();
-    }
-  }, [activeTab, connected, walletAddress]);
 
   // Badge classes for position types
   const longBadgeClass =
@@ -397,7 +559,7 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
   };
 
   // Simplified function to handle redeeming
-  const handleRedeem = async () => {
+  const handleRedeem = async (positionId?: string) => {
     if (!connected || !walletAddress) {
       toast.error("Please connect your wallet first");
       return;
@@ -405,13 +567,32 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
 
     try {
       toast.loading("Redeeming tokens...");
+      setIsMinting(true);
 
-      // Here you would implement the actual redemption logic
-      // For demo, we'll just show a success message
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (positionId) {
+        // If a specific position ID is provided, redeem that position
+        console.log(`Redeeming position with ID: ${positionId}`);
 
-      toast.success("Successfully redeemed tokens (simulation)");
+        // Create a transaction to redeem the position
+        const txb = new Transaction();
 
+        txb.moveCall({
+          target: `${PACKAGE_ID}::variance_swap::redeem_tokens`,
+          arguments: [txb.object(positionId)],
+        });
+
+        // Execute the transaction
+        const response = await executeTransaction(txb);
+        console.log("Redemption transaction executed:", response);
+
+        toast.success("Successfully redeemed tokens");
+      } else {
+        // If no specific position is provided, just simulate for now
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        toast.success("Successfully redeemed tokens (simulation)");
+      }
+
+      // Refresh balances and positions
       fetchUsdcBalance();
       fetchUserPositions();
     } catch (error: unknown) {
@@ -421,6 +602,7 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
           error instanceof Error ? error.message : "Unknown error occurred",
       });
     } finally {
+      setIsMinting(false);
       toast.dismiss();
     }
   };
@@ -771,25 +953,29 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
                   </div>
                 ) : userPositions.length > 0 ? (
                   <div className="space-y-4">
-                    {userPositions.map((position, index) => (
+                    {userPositions.map((position) => (
                       <div
-                        key={index}
+                        key={position.id}
                         className="bg-[#0e172a] rounded-xl p-4 shadow-sm"
                       >
                         <div className="flex justify-between items-center mb-3">
                           <Badge
                             className={
+                              position.positionType === "long" ||
                               position.type === "LONG"
                                 ? longBadgeClass
                                 : shortBadgeClass
                             }
                           >
-                            {position.type === "LONG" ? (
+                            {position.positionType === "long" ||
+                            position.type === "LONG" ? (
                               <ArrowUpRight className="w-3 h-3 mr-1" />
                             ) : (
                               <ArrowDownRight className="w-3 h-3 mr-1" />
                             )}
-                            VAR {position.type}
+                            {position.positionType === "both"
+                              ? "VAR LONG & SHORT"
+                              : `VAR ${position.type}`}
                           </Badge>
                           <div
                             className={`text-sm font-medium ${
@@ -805,7 +991,12 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
                           <div>
                             <div className="text-gray-400 text-xs">Amount</div>
                             <div className="text-white font-medium">
-                              {position.amount} tokens
+                              {position.positionType === "both"
+                                ? `${position.longAmount} Long / ${position.shortAmount} Short`
+                                : position.positionType === "long" ||
+                                  position.type === "LONG"
+                                ? `${position.longAmount} tokens`
+                                : `${position.shortAmount} tokens`}
                             </div>
                           </div>
                           <div>
@@ -821,12 +1012,19 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
                             </div>
                           </div>
                           <div>
-                            <div className="text-gray-400 text-xs">
-                              Token Used
-                            </div>
+                            <div className="text-gray-400 text-xs">Status</div>
                             <div className="text-white flex items-center">
-                              <div className="w-3 h-3 rounded-full mr-1 bg-[#6fbcf0]"></div>
-                              USDC
+                              {position.isRedeemable ? (
+                                <span className="text-green-400 flex items-center">
+                                  <Check className="w-3 h-3 mr-1" /> Redeemable
+                                </span>
+                              ) : (
+                                <span className="text-blue-400 flex items-center">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  Expires in{" "}
+                                  {formatDuration(position.timeRemaining)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -837,7 +1035,7 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
                               variant="outline"
                               onClick={() =>
                                 window.open(
-                                  `https://explorer.sui.io/object/${position.address}?network=${NETWORK}`,
+                                  `https://explorer.sui.io/object/${position.id}?network=${NETWORK}`,
                                   "_blank"
                                 )
                               }
@@ -845,13 +1043,23 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
                               View on Explorer
                             </Button>
 
-                            {dynamicExpired && (
+                            {position.isRedeemable && (
                               <Button
                                 className="bg-[#B079B5] hover:bg-[#9d6aaa] text-white"
-                                onClick={() => handleRedeem()}
+                                onClick={() => handleRedeem(position.id)}
+                                disabled={isMinting}
                               >
-                                <CircleDollarSign className="w-4 h-4 mr-2" />
-                                Redeem
+                                {isMinting ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Redeeming...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CircleDollarSign className="w-4 h-4 mr-2" />
+                                    Redeem
+                                  </>
+                                )}
                               </Button>
                             )}
                           </div>
@@ -868,14 +1076,32 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
                       No positions found
                     </h4>
                     <p className="text-gray-400 text-sm mb-4">
-                      You don&apos;t have any minted tokens for this market yet.
+                      {connected
+                        ? `You don't have any minted tokens for this market yet.`
+                        : `Connect your wallet to view your positions.`}
                     </p>
-                    <Button
-                      className="bg-[#B079B5] hover:bg-[#9d6aaa] text-white"
-                      onClick={() => setActiveTab("mint")}
-                    >
-                      Mint New Tokens
-                    </Button>
+                    {connected && !dynamicExpired ? (
+                      <Button
+                        className="bg-[#B079B5] hover:bg-[#9d6aaa] text-white"
+                        onClick={() => setActiveTab("mint")}
+                      >
+                        Mint New Tokens
+                      </Button>
+                    ) : !connected ? (
+                      <Button
+                        className="bg-[#B079B5] hover:bg-[#9d6aaa] text-white"
+                        onClick={() => {
+                          try {
+                            wallet.select("Suiet");
+                          } catch (e) {
+                            console.error(e);
+                            toast.error("Failed to connect wallet");
+                          }
+                        }}
+                      >
+                        Connect Wallet
+                      </Button>
+                    ) : null}
                   </div>
                 )}
               </div>

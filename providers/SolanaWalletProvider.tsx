@@ -66,13 +66,10 @@ const ClientWalletProvider = ({ children }: { children: ReactNode }) => {
 };
 
 // Dynamically import the provider to ensure it only runs on the client side
-const SolanaWalletProvider = dynamic(
-  () => Promise.resolve(ClientWalletProvider),
-  {
-    ssr: false,
-  }
-);
+const SuiWalletProvider = dynamic(() => Promise.resolve(ClientWalletProvider), {
+  ssr: false,
+});
 
 export default function WalletWrapper({ children }: { children: ReactNode }) {
-  return <SolanaWalletProvider>{children}</SolanaWalletProvider>;
+  return <SuiWalletProvider>{children}</SuiWalletProvider>;
 }

@@ -352,10 +352,9 @@ const Markets = () => {
                 </h1>
                 <p className="text-gray-700 text-xl max-w-2xl leading-relaxed relative ml-1 font-light">
                   <span className="bg-gradient-to-r from-gray-700 to-gray-500 bg-clip-text text-transparent">
-                    Trade volatility directly on Solana with precision
-                    instruments.
+                    Trade volatility directly on Sui with precision instruments.
                     <span className="block mt-2 text-base text-gray-500 font-light">
-                      Access the most advanced volatility markets on Solana
+                      Access the most advanced volatility markets on Sui
                     </span>
                   </span>
                 </p>

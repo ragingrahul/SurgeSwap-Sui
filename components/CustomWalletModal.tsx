@@ -153,7 +153,7 @@ export const CustomWalletModal: React.FC<CustomWalletModalProps> = ({
       >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-white">
-            Connect a wallet on Solana to continue
+            Connect a wallet on Sui to continue
           </h2>
           <button
             onClick={onClose}
@@ -201,7 +201,7 @@ export const CustomWalletModal: React.FC<CustomWalletModalProps> = ({
             ))
           ) : (
             <p className="text-gray-300 text-center">
-              No wallets found. Please install a Solana wallet extension.
+              No wallets found. Please install a Sui wallet extension.
             </p>
           )}
         </div>
