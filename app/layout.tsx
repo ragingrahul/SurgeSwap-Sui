@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Surge Protocol - Trade Volatility",
-  description: "Surge Protocol: Trade volatility on Solana",
+  description: "Surge Protocol: Trade volatility on Sui",
 };
 
 export default function RootLayout({

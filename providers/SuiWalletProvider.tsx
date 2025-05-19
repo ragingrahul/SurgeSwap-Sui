@@ -5,6 +5,7 @@ import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { getFullnodeUrl } from "@mysten/sui/client";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WalletProvider as SuietWalletProvider } from "@suiet/wallet-kit";
 
 // Create a client for react-query
 const queryClient = new QueryClient({
@@ -40,9 +41,11 @@ const ClientWalletProvider = ({ children }: ClientWalletProviderProps) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networkConfig} defaultNetwork="devnet">
+      <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
         <WalletProvider autoConnect={false}>
-          {mounted && children}
+          <SuietWalletProvider>
+            {mounted && <>{children}</>}
+          </SuietWalletProvider>
         </WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>

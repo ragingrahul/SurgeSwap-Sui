@@ -19,10 +19,13 @@ import {
   AlertTriangle,
   Check,
   Calendar,
+  Loader2,
 } from "lucide-react";
-import { fetchAllMarkets, formatDeposits } from "@/lib/marketUtils";
+import { formatDeposits } from "@/lib/marketUtils";
 import MarketDetailsPopup from "@/components/MarketDetailsPopup";
-import { useVolatilityEffect } from "@/hooks/useVolatilityEffect";
+import { useSuiVolatility } from "@/hooks/useSuiVolatility";
+import { useSuiMarkets } from "@/hooks/useSuiMarkets";
+import { Toaster } from "sonner";
 
 // Market type definition for display
 interface Market {
@@ -46,6 +49,10 @@ interface Market {
   varLongMint?: string;
   varShortMint?: string;
   usdcVault?: string;
+  startVolatility?: number;
+  realizedVariance?: number;
+  authority?: string;
+  formattedStrike?: string;
 }
 
 const Markets = () => {
@@ -54,8 +61,16 @@ const Markets = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
 
-  // Get live volatility data from the hook
-  const { volatility, loading: volatilityLoading } = useVolatilityEffect();
+  // Get live volatility data from the Sui hook
+  const { annualizedVolatility: volatility, loading: volatilityLoading } =
+    useSuiVolatility();
+
+  // Get markets from Sui shared object
+  const {
+    markets: suiMarkets,
+    loading: suiMarketsLoading,
+    error: suiMarketsError,
+  } = useSuiMarkets();
 
   // Calculate change percentage (mock data for now)
   const [changePercentage, setChangePercentage] = useState(2.4);
@@ -72,50 +87,28 @@ const Markets = () => {
   }, [volatility, volatilityLoading]);
 
   useEffect(() => {
-    const loadMarkets = async () => {
+    const formatSuiMarkets = () => {
       try {
         setIsLoading(true);
-        const marketData = await fetchAllMarkets();
 
-        console.log("Loaded markets:", marketData);
+        if (suiMarketsLoading) {
+          return; // Wait until loading is complete
+        }
+
+        if (suiMarketsError) {
+          setError(suiMarketsError);
+          return;
+        }
+
+        console.log("Processing Sui markets:", suiMarkets);
 
         // Convert market data to display format
-        const formattedMarkets = marketData.map((market) => {
-          // Generate a market name based on the strike value and timestamp
+        const formattedMarkets = suiMarkets.map((market) => {
           const strikeValue = market.strike * 100;
-
-          // Parse epoch (it's a string in the data) to number for date calculation
-          const epochNum = parseInt(market.epoch, 10);
-          const expiryDate = new Date(epochNum * 1000);
-          console.log("Expiry date:", expiryDate);
-
-          // Format date in financial standard format with day (DD-MMM-YY)
-          const monthNames = [
-            "JAN",
-            "FEB",
-            "MAR",
-            "APR",
-            "MAY",
-            "JUN",
-            "JUL",
-            "AUG",
-            "SEP",
-            "OCT",
-            "NOV",
-            "DEC",
-          ];
-          const day = expiryDate.getDate().toString().padStart(2, "0"); // Ensure 2 digits with leading zero
-          const month = monthNames[expiryDate.getMonth()];
-          const year = expiryDate.getFullYear().toString().slice(2); // Just take last 2 digits
-
-          // Create a standard derivative market name: "VOL 15-JUN-23 25.00%"
-          const marketName = `VOL ${day}-${month}-${year} ${strikeValue.toFixed(
-            2
-          )}%`;
 
           return {
             id: market.id,
-            name: marketName,
+            name: `VOL-${strikeValue.toFixed(0)}`,
             symbol: `VOL-${strikeValue.toFixed(0)}`,
             tvl: formatDeposits(market.totalDeposits),
             tvlValue: market.totalDeposits,
@@ -125,79 +118,44 @@ const Markets = () => {
             icons: [market.isExpired ? "⚠️" : "🟢"],
             timestamp: market.timestamp,
             strike: market.strike,
+            formattedStrike: `${market.strike.toFixed(2)}%`,
             isExpired: market.isExpired,
             epoch: market.epoch,
-            address: market.address,
-            currentVol: market.currentVol,
+            address: market.id,
+            currentVol: Math.sqrt(market.realizedVariance || 0), // Calculate current vol from realized variance
             varLongMint: market.varLongMint,
             varShortMint: market.varShortMint,
             usdcVault: market.usdcVault,
+            startVolatility: market.startVolatility,
+            realizedVariance: market.realizedVariance,
+            authority: market.authority,
           };
         });
 
         setMarkets(formattedMarkets);
         setError(null);
       } catch (err) {
-        console.error("Failed to load markets:", err);
-        setError("Failed to load market data. Please try again later.");
+        console.error("Failed to process Sui markets:", err);
+        setError("Failed to process market data. Please try again later.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadMarkets();
-  }, []);
-
-  // Sample fallback data (only used if no markets are found)
-  const fallbackMarkets: Market[] = [
-    {
-      id: "1",
-      name: "VOL 15-JUN-23 25.00%",
-      symbol: "VOL-25",
-      tvl: "$64.1M",
-      tvlValue: 64100000,
-      protocol: "Surge",
-      category: "Variance Swap",
-      strategy: "Variance Swap",
-      icons: ["🟢"],
-      strike: 0.25,
-      timestamp: 1686096000, // June 2023
-      epoch: "1686096000",
-      address: "Surge1111111111111111111111111111111111",
-      currentVol: 0.2,
-    },
-    {
-      id: "2",
-      name: "VOL 30-SEP-23 32.00%",
-      symbol: "VOL-32",
-      tvl: "$14.6M",
-      tvlValue: 14600000,
-      protocol: "Surge",
-      category: "Variance Swap",
-      strategy: "Variance Swap",
-      hasBoost: true,
-      icons: ["🟢", "⚫"],
-      strike: 0.32,
-      timestamp: 1693584000, // September 2023
-      epoch: "1693584000",
-      address: "Surge2222222222222222222222222222222222",
-      currentVol: 0.3,
-    },
-  ];
-
-  // Use real markets if available, otherwise fallback to sample data
-  const displayMarkets = markets.length > 0 ? markets : fallbackMarkets;
+    formatSuiMarkets();
+  }, [suiMarkets, suiMarketsLoading, suiMarketsError]);
 
   // Update tableData to include dynamically checked expiry status
-  const tableData = displayMarkets.map((market) => {
+  const tableData = markets.map((market) => {
     // Add dynamic expiry check based on epoch
     let dynamicExpired = market.isExpired || false;
 
-    if (market.epoch) {
+    if (market.epoch && market.timestamp) {
       try {
-        const epochTimestamp = parseInt(market.epoch, 10) * 1000; // Convert to milliseconds
+        const epochNum = parseInt(market.epoch, 10);
+        const expiryTimestamp = (market.timestamp + epochNum) * 1000; // Convert to milliseconds
         const currentTimestamp = Date.now();
-        dynamicExpired = currentTimestamp > epochTimestamp;
+        dynamicExpired = currentTimestamp > expiryTimestamp;
       } catch (err) {
         console.error(`Error checking expiry for market ${market.id}:`, err);
         // Fall back to the provided isExpired value
@@ -215,6 +173,7 @@ const Markets = () => {
       hasBoost: market.hasBoost || false,
       timestamp: market.timestamp,
       strike: market.strike,
+      formattedStrike: market.formattedStrike,
       isExpired: dynamicExpired, // Use the dynamically calculated expiry status
       epoch: market.epoch,
       address: market.address,
@@ -223,6 +182,9 @@ const Markets = () => {
       varLongMint: market.varLongMint,
       varShortMint: market.varShortMint,
       usdcVault: market.usdcVault,
+      startVolatility: market.startVolatility,
+      realizedVariance: market.realizedVariance,
+      authority: market.authority,
     };
   });
 
@@ -272,12 +234,12 @@ const Markets = () => {
   };
 
   // Format the expiry date from epoch
-  const formatExpiry = (epoch?: string) => {
-    if (!epoch) return "N/A";
+  const formatExpiry = (epoch?: string, timestamp?: number) => {
+    if (!epoch || !timestamp) return "N/A";
 
     try {
       const epochNum = parseInt(epoch, 10);
-      const expiryDate = new Date(epochNum * 1000);
+      const expiryDate = new Date((timestamp + epochNum) * 1000);
       return expiryDate.toLocaleDateString();
     } catch (err) {
       console.error("Error formatting expiry:", err);
@@ -301,12 +263,42 @@ const Markets = () => {
     epoch?: string;
     address?: string;
     currentVol?: number;
+    varLongMint?: string;
+    varShortMint?: string;
+    usdcVault?: string;
+    startVolatility?: number;
+    realizedVariance?: number;
+    authority?: string;
+    formattedStrike?: string;
   }) => {
-    // Find the full market data from the displayMarkets array
-    const fullMarket = displayMarkets.find((m) => m.id === market.id);
-    if (fullMarket) {
-      setSelectedMarket(fullMarket);
-    }
+    // Set selected market with all relevant details
+    const selected: Market = {
+      id: market.id,
+      name: market.asset,
+      symbol: market.asset,
+      tvl: market.tvl,
+      tvlValue: market.tvlValue,
+      protocol: market.protocol,
+      category: "Variance Swap",
+      strategy: market.strategy,
+      hasBoost: market.hasBoost,
+      icons: market.icons,
+      timestamp: market.timestamp,
+      strike: market.strike,
+      formattedStrike: market.formattedStrike,
+      isExpired: market.isExpired,
+      epoch: market.epoch,
+      address: market.address || market.id,
+      currentVol: market.currentVol,
+      varLongMint: market.varLongMint,
+      varShortMint: market.varShortMint,
+      usdcVault: market.usdcVault,
+      startVolatility: market.startVolatility,
+      realizedVariance: market.realizedVariance,
+      authority: market.authority,
+    };
+
+    setSelectedMarket(selected);
   };
 
   // Close the market details popup
@@ -314,9 +306,18 @@ const Markets = () => {
     setSelectedMarket(null);
   };
 
+  // Loading indicator component
+  const LoadingIndicator = () => (
+    <div className="flex flex-col items-center justify-center py-12">
+      <Loader2 className="w-8 h-8 text-[#019E8C] animate-spin mb-4" />
+      <p className="text-gray-600">Loading markets from Sui...</p>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#F8F5EE] text-surge-deep-green overflow-hidden">
       <Header />
+      <Toaster position="top-right" richColors />
 
       <main className="relative pt-6">
         {/* Background decorative elements */}
@@ -451,24 +452,35 @@ const Markets = () => {
                 </div>
               </div>
 
-              {isLoading ? (
-                <div className="p-10 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#019E8C] mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading markets...</p>
+              {/* Display loading state or error when appropriate */}
+              {isLoading && <LoadingIndicator />}
+
+              {error && (
+                <div className="p-8 text-center">
+                  <AlertTriangle className="w-8 h-8 text-orange-500 mx-auto mb-4" />
+                  <p className="text-gray-700 mb-2 font-medium">
+                    Error Loading Markets
+                  </p>
+                  <p className="text-gray-600 text-sm max-w-md mx-auto">
+                    {error}
+                  </p>
                 </div>
-              ) : error ? (
-                <div className="p-10 text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600 mb-2">{error}</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.location.reload()}
-                    className="rounded-full px-4 border-[#019E8C] text-[#019E8C] hover:bg-[#019E8C]/5 gap-2 shadow-sm"
-                  >
-                    Try Again
-                  </Button>
+              )}
+
+              {!isLoading && !error && markets.length === 0 && (
+                <div className="p-8 text-center">
+                  <AlertTriangle className="w-8 h-8 text-orange-500 mx-auto mb-4" />
+                  <p className="text-gray-700 mb-2 font-medium">
+                    No Markets Found
+                  </p>
+                  <p className="text-gray-600 text-sm max-w-md mx-auto">
+                    Could not find any markets for the current package. Please
+                    check the package ID.
+                  </p>
                 </div>
-              ) : (
+              )}
+
+              {!isLoading && !error && markets.length > 0 && (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -528,14 +540,14 @@ const Markets = () => {
                             <StrategyBadge strategy={row.strategy} />
                           </TableCell>
                           <TableCell className="font-medium text-[#344B47]">
-                            {row.strike !== undefined
-                              ? `${(row.strike * 100).toFixed(2)}%`
-                              : "N/A"}
+                            {row.formattedStrike}
                           </TableCell>
                           <TableCell className="text-[#344B47]">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              <span>{formatExpiry(row.epoch)}</span>
+                              <span>
+                                {formatExpiry(row.epoch, row.timestamp)}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -570,6 +582,10 @@ const Markets = () => {
           varLongMint={selectedMarket.varLongMint}
           varShortMint={selectedMarket.varShortMint}
           usdcVault={selectedMarket.usdcVault}
+          currentVol={selectedMarket.currentVol}
+          startVolatility={selectedMarket.startVolatility}
+          realizedVariance={selectedMarket.realizedVariance}
+          authority={selectedMarket.authority}
         />
       )}
     </div>
