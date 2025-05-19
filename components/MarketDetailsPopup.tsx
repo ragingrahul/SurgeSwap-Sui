@@ -249,7 +249,6 @@ export interface MarketDetailsProps {
 }
 
 const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
-  name,
   address,
   symbol,
   protocol,
@@ -627,7 +626,10 @@ const MarketDetailsPopup: React.FC<MarketDetailsProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-                <span className="text-[#44b49c] mr-2">{name}</span>
+                <span className="text-[#44b49c] mr-2">
+                  VOL {formatExpiry(timestamp, epoch)}{" "}
+                  {strike ? `${strike}%` : ""}
+                </span>
                 <Badge
                   variant="secondary"
                   className="px-2 py-0.5 text-xs bg-[#1e2a3d] text-gray-300"

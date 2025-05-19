@@ -106,9 +106,20 @@ const Markets = () => {
         const formattedMarkets = suiMarkets.map((market) => {
           const strikeValue = market.strike * 100;
 
+          // Format expiry date for name
+          const expiryDate =
+            market.timestamp && market.epoch
+              ? new Date(
+                  (market.timestamp + parseInt(market.epoch, 10)) * 1000
+                ).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })
+              : "Unknown";
+
           return {
             id: market.id,
-            name: `VOL-${strikeValue.toFixed(0)}`,
+            name: `VOL ${expiryDate} ${strikeValue.toFixed(0)}%`,
             symbol: `VOL-${strikeValue.toFixed(0)}`,
             tvl: formatDeposits(market.totalDeposits),
             tvlValue: market.totalDeposits,
