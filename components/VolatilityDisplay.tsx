@@ -1,31 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useVolatilityEffect } from "@/hooks/useVolatilityEffect";
+import { useSuiVolatility } from "@/hooks/useSuiVolatility";
 
 const VolatilityDisplay = () => {
-  const { volatility, loading } = useVolatilityEffect();
+  const { annualizedVolatility, loading, error } = useSuiVolatility();
   const [visible, setVisible] = useState(false);
   const [prevValue, setPrevValue] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!loading && volatility !== prevValue) {
+    if (!loading && annualizedVolatility !== prevValue) {
       // When value changes or loads initially, trigger the fade effect
       setVisible(false);
       const timer = setTimeout(() => {
-        setPrevValue(volatility);
+        setPrevValue(annualizedVolatility);
         setVisible(true);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [volatility, prevValue, loading]);
+  }, [annualizedVolatility, prevValue, loading]);
 
   // Calculate placeholder value to ensure consistent layout dimensions
-  const displayValue = prevValue
-    ? prevValue.toFixed(2)
-    : volatility
-    ? volatility.toFixed(2)
-    : "48.20";
+  const displayValue = annualizedVolatility.toFixed(2);
 
   return (
     // Fixed height container to prevent layout shifts
@@ -45,7 +41,7 @@ const VolatilityDisplay = () => {
           <div className="relative">
             <div className="flex flex-col items-center">
               <div className="text-sm font-semibold tracking-wider text-[#003025] mb-2">
-                SOLANA VOLATILITY INDEX
+                SUI VOLATILITY INDEX
               </div>
               {/* Fixed height container for the value */}
               <div
@@ -78,6 +74,9 @@ const VolatilityDisplay = () => {
                 </div>
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#019e8c]/10 to-[#0AEFFF]/10 blur-lg opacity-50 -z-10 rounded-full"></div>
               </div>
+              {error && (
+                <div className="text-red-500 text-xs mt-2">Error: {error}</div>
+              )}
             </div>
           </div>
         )}

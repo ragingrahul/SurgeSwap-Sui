@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useVolatilityEffect } from "@/hooks/useVolatilityEffect";
+import { useSuiVolatility } from "@/hooks/useSuiVolatility";
 
 const VolatilityDisplay = ({ value }: { value: string }) => {
   const [visible, setVisible] = useState(false);
@@ -74,6 +74,8 @@ const CryptoCard = ({
             <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
           ) : symbol === "SOL" ? (
             <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
+          ) : symbol === "SUI" ? (
+            <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
           ) : (
             <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
           )}
@@ -103,7 +105,7 @@ const CryptoCard = ({
 
 const PhoneMockup = () => {
   const [loaded, setLoaded] = useState(false);
-  const { volatility, lastPrice, loading } = useVolatilityEffect();
+  const { annualizedVolatility, lastPrice, loading } = useSuiVolatility();
 
   useEffect(() => {
     setLoaded(true);
@@ -111,9 +113,9 @@ const PhoneMockup = () => {
 
   const formattedVolatility = loading
     ? "Loading..."
-    : `${volatility.toFixed(2)}%`;
+    : `${annualizedVolatility.toFixed(2)}%`;
 
-  const formattedSolPrice = loading ? "Loading..." : `$${lastPrice.toFixed(2)}`;
+  const formattedSuiPrice = loading ? "Loading..." : `$${lastPrice.toFixed(6)}`;
 
   return (
     <div className="relative h-[480px]">
@@ -145,10 +147,10 @@ const PhoneMockup = () => {
               isVolatility={true}
             />
             <CryptoCard
-              name="Solana"
-              symbol="SOL"
-              price={formattedSolPrice}
-              color="bg-[#B079B5]/80"
+              name="Sui"
+              symbol="SUI"
+              price={formattedSuiPrice}
+              color="bg-[#4CCCE6]/80"
               delay={300}
             />
           </div>

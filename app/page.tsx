@@ -25,7 +25,7 @@ export default function Home() {
               <VolatilityDisplay />
 
               <p className="text-base md:text-lg font-semibold text-gray-700 max-w-2xl mx-auto mb-6 md:mb-8 ">
-                Trade volatility directly on Solana with precision instruments.
+                Trade volatility directly on Sui with precision instruments.
               </p>
 
               <div className="flex flex-col sm:flex-row justify-center gap-4 mb-6 md:mb-8">
